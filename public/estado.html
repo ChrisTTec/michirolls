@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Seguimiento MichiRolls</title>
+<link rel="icon" type="image/icon" href="Logo-michiRolls.ico">
+
+<style>
+
+body {
+    margin: 0;
+    font-family: Arial;
+    background: linear-gradient(135deg, #ffdde1, #ee9ca7);
+}
+
+/* HEADER */
+header {
+    background: #111;
+    color: white;
+    text-align: center;
+    padding: 18px;
+    font-size: 22px;
+}
+
+/* CONTENEDOR */
+.container {
+    max-width: 520px;
+    margin: 20px auto;
+    padding: 15px;
+}
+
+/* CARD PRINCIPAL */
+.card {
+    background: white;
+    border-radius: 20px;
+    padding: 18px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    text-align: center;
+}
+
+/* INPUT */
+input {
+    width: 100%;
+    padding: 14px;
+    margin-top: 10px;
+    border-radius: 12px;
+    border: 1px solid #ddd;
+    font-size: 16px;
+    outline: none;
+}
+
+/* BOTÓN */
+button {
+    width: 100%;
+    margin-top: 10px;
+    padding: 14px;
+    background: #ff4081;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+/* RESULTADO */
+.resultado {
+    margin-top: 20px;
+}
+
+/* CARD RESULTADO */
+.box {
+    background: white;
+    padding: 20px;
+    border-radius: 20px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    text-align: center;
+}
+
+/* TEXTO GRANDE */
+h2, h3 {
+    margin: 10px 0;
+}
+
+/* ESTADO CHIP */
+.estado {
+    display: inline-block;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-weight: bold;
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+.prep {
+    background: orange;
+    color: white;
+}
+
+.listo {
+    background: green;
+    color: white;
+}
+
+.pendiente {
+    background: gray;
+    color: white;
+}
+
+.error {
+    color: red;
+    font-weight: bold;
+}
+
+/* BOTON VOLVER */
+.volver {
+    margin-top: 10px;
+    background: #333;
+}
+
+/* MOBILE */
+@media (max-width: 480px) {
+header { font-size: 20px; }
+.card, .box { padding: 15px; }
+input, button { font-size: 16px; }
+}
+
+</style>
+</head>
+
+<body>
+
+<header>🐱🍣 Seguimiento MichiRolls</header>
+
+<div class="container">
+
+<div class="card">
+
+    <h3>🔎 Ingresa tu código</h3>
+
+    <input id="codigo" placeholder="Ej: MR-1234">
+    <button onclick="buscar()">Buscar Pedido</button>
+
+    <button class="volver" onclick="volver()">⬅ Volver al inicio</button>
+
+</div>
+
+<div id="resultado" class="resultado"></div>
+
+</div>
+
+<script>
+
+let ultimoCodigo = null;
+
+/* =========================
+   BUSCAR PEDIDO
+========================= */
+function buscar(){
+
+let codigo = document.getElementById("codigo").value.trim();
+
+if(!codigo){
+alert("Ingresa un código");
+return;
+}
+
+ultimoCodigo = codigo;
+
+cargarPedido(codigo);
+
+}
+
+/* =========================
+   CARGAR PEDIDO (REUTILIZABLE)
+========================= */
+function cargarPedido(codigo){
+
+fetch("/buscar/" + codigo)
+.then(res => res.json())
+.then(data => {
+
+let div = document.getElementById("resultado");
+
+if(!data || data.error){
+div.innerHTML = `
+<div class="box">
+<p class="error">❌ Pedido no encontrado</p>
+</div>`;
+return;
+}
+
+let estadoClass = "pendiente";
+
+if(data.estado === "En preparación") estadoClass = "prep";
+if(data.estado === "Listo") estadoClass = "listo";
+
+/* PRODUCTOS */
+let items = (data.detalle || []).map(p =>
+`🍣 ${p.nombre} - $${p.precio} ${p.extras ? "(" + p.extras + ")" : ""}`
+).join("<br>");
+
+div.innerHTML = `
+<div class="box">
+
+<h2>🍣 ${data.codigo}</h2>
+
+<p><b>Cliente:</b> ${data.nombre || "N/A"}</p>
+<p><b>Teléfono:</b> ${data.telefono || "N/A"}</p>
+
+<p><b>Total:</b> $${data.total || 0}</p>
+
+<p><b>Pago:</b> ${data.pago || "No definido"}</p>
+<p><b>Dirección:</b> ${data.direccion || "Retiro en local"}</p>
+
+<hr>
+
+<h3>🛒 Pedido</h3>
+<p style="text-align:left">${items || "Sin productos"}</p>
+
+<div class="estado ${estadoClass}">
+${data.estado || "Pendiente"}
+</div>
+
+<p style="margin-top:15px;">
+📦 Gracias por tu compra 💖
+</p>
+
+</div>
+`;
+
+})
+.catch(err=>{
+console.log(err);
+document.getElementById("resultado").innerHTML=
+`<div class="box"><p class="error">Error servidor</p></div>`;
+});
+
+}
+
+/* =========================
+   AUTO REFRESH CADA 10 SEG
+========================= */
+setInterval(() => {
+if(ultimoCodigo){
+cargarPedido(ultimoCodigo);
+}
+}, 10000);
+
+/* =========================
+   VOLVER
+========================= */
+function volver(){
+window.location.href = "/";
+}
+
+</script>
+
+</body>
+</html>

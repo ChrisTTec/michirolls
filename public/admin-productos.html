@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin Productos</title>
+<link rel="icon" type="image/icon" href="Logo-michiRolls.ico">
+
+
+<style>
+body{
+    font-family: Arial;
+    margin:0;
+    background:#f5f5f5;
+}
+
+header{
+    background:#111;
+    color:white;
+    padding:15px;
+    text-align:center;
+}
+
+.container{ padding:10px; }
+
+.card{
+    background:white;
+    padding:10px;
+    margin:10px 0;
+    border-radius:12px;
+}
+
+img{
+    width:90px;
+    height:90px;
+    object-fit:cover;
+    border-radius:10px;
+}
+
+input,select{
+    width:100%;
+    padding:8px;
+    margin:5px 0;
+}
+
+button{
+    background:#ff4081;
+    color:white;
+    border:none;
+    padding:8px;
+    border-radius:10px;
+    margin:3px;
+    cursor:pointer;
+}
+
+.extra-box{
+    background:#eee;
+    padding:6px;
+    margin:4px 0;
+    border-radius:8px;
+    font-size:13px;
+}
+</style>
+</head>
+
+<body>
+
+<header>🍣 Admin Productos</header>
+
+<div class="container">
+
+<h3>➕ / ✏️ Producto</h3>
+
+<input id="nombre" placeholder="Nombre">
+<input id="precio" placeholder="Precio">
+<select id="categoria">
+    <option value="handroll">handroll</option>
+    <option value="sushi">sushi</option>
+</select>
+
+<input type="file" id="img">
+
+<button onclick="guardar()">Guardar</button>
+<button onclick="limpiar()">Limpiar</button>
+
+<hr>
+
+<div id="lista"></div>
+
+</div>
+
+<script>
+
+let editId = null;
+let editImage = "";
+
+/* =========================
+   🔥 CARGA ROBUSTA
+========================= */
+function cargar(){
+
+fetch("/productos")
+.then(r => r.json())
+.then(data => {
+
+    // 🔥 FIX REAL: soporta ambos formatos
+    let productos = data.productos ?? data ?? [];
+    let extras = Array.isArray(data.extras) ? data.extras : [];
+
+    let html = "";
+
+    if(!productos || productos.length === 0){
+        document.getElementById("lista").innerHTML = "<p>No hay productos</p>";
+        return;
+    }
+
+    productos.forEach(p => {
+
+        let img = p.imagen || "https://via.placeholder.com/100";
+
+        // 🔥 FIX IMPORTANTE: asegurar comparación numérica
+        let extrasProducto = extras.filter(e =>
+            Number(e.producto_id) === Number(p.id)
+        );
+
+        let extrasHTML = "";
+
+        if(extrasProducto.length > 0){
+            extrasProducto.forEach(e => {
+                extrasHTML += `
+                <div class="extra-box">
+                    🧂 ${e.nombre} - $${e.precio}
+                    <button onclick="delExtra(${e.id})">❌</button>
+                </div>`;
+            });
+        } else {
+            extrasHTML = "<i>No hay extras</i>";
+        }
+
+        html += `
+        <div class="card">
+
+            <img src="${img}">
+
+            <h3>${p.nombre}</h3>
+            <p>$${p.precio}</p>
+            <small>${p.categoria}</small>
+
+            <hr>
+
+            <b>Extras:</b>
+            ${extrasHTML}
+
+            <input id="exn${p.id}" placeholder="Nombre extra">
+            <input id="exp${p.id}" placeholder="Precio extra">
+
+            <button onclick="addExtra(${p.id})">➕ Agregar extra</button>
+
+            <br><br>
+
+            <button onclick="editar(${p.id}, '${escapeHtml(p.nombre)}', ${p.precio}, '${p.categoria}', '${img}')">
+                Editar
+            </button>
+
+            <button onclick="eliminar(${p.id})">
+                Eliminar
+            </button>
+
+        </div>
+        `;
+    });
+
+    document.getElementById("lista").innerHTML = html;
+
+})
+.catch(err => {
+    console.log("ERROR:", err);
+    document.getElementById("lista").innerHTML = "<p>Error cargando productos</p>";
+});
+
+}
+
+
+/* =========================
+   ➕ EXTRA
+========================= */
+function addExtra(producto_id){
+
+let nombre = document.getElementById("exn"+producto_id).value;
+let precio = document.getElementById("exp"+producto_id).value;
+
+if(!nombre || !precio){
+    alert("Completa extra");
+    return;
+}
+
+fetch("/extras",{
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({producto_id,nombre,precio})
+})
+.then(()=>cargar());
+
+}
+
+/* =========================
+   ❌ EXTRA
+========================= */
+function delExtra(id){
+fetch("/extras/"+id,{method:"DELETE"})
+.then(()=>cargar());
+}
+
+/* =========================
+   GUARDAR PRODUCTO
+========================= */
+async function guardar(){
+
+let nombre = document.getElementById("nombre").value;
+let precio = document.getElementById("precio").value;
+let categoria = document.getElementById("categoria").value;
+let file = document.getElementById("img").files[0];
+
+if(!nombre || !precio){
+    alert("Completa campos");
+    return;
+}
+
+let imagen = editImage;
+
+if(file){
+    imagen = await toBase64(file);
+}
+
+fetch(editId ? "/productos/"+editId : "/productos",{
+method: editId ? "PUT" : "POST",
+headers: {"Content-Type":"application/json"},
+body: JSON.stringify({nombre,precio,categoria,imagen})
+})
+.then(()=>{
+    limpiar();
+    cargar();
+});
+
+}
+
+/* =========================
+   EDIT
+========================= */
+function editar(id,nombre,precio,categoria,imagen){
+editId=id;
+editImage=imagen;
+
+document.getElementById("nombre").value=nombre;
+document.getElementById("precio").value=precio;
+document.getElementById("categoria").value=categoria;
+}
+
+/* =========================
+   DELETE
+========================= */
+function eliminar(id){
+fetch("/productos/"+id,{method:"DELETE"})
+.then(()=>cargar());
+}
+
+/* =========================
+   CLEAN
+========================= */
+function limpiar(){
+editId=null;
+editImage="";
+document.getElementById("nombre").value="";
+document.getElementById("precio").value="";
+document.getElementById("img").value="";
+}
+
+/* =========================
+   BASE64
+========================= */
+function toBase64(file){
+return new Promise(res=>{
+let r=new FileReader();
+r.onload=()=>res(r.result);
+r.readAsDataURL(file);
+});
+}
+
+/* =========================
+   SAFE TEXT
+========================= */
+function escapeHtml(text){
+return text
+.replace(/&/g,"&amp;")
+.replace(/</g,"&lt;")
+.replace(/>/g,"&gt;")
+.replace(/"/g,"&quot;")
+.replace(/'/g,"&#039;");
+}
+
+cargar();
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Admin MichiRolls</title>
+<link rel="icon" type="image/icon" href="Logo-michiRolls.ico">
+
+
+<style>
+
+body {
+    font-family: Arial;
+    margin: 0;
+    background: #f4f4f4;
+}
+
+/* HEADER */
+header {
+    background: #111;
+    color: white;
+    padding: 20px;
+    text-align: center;
+}
+
+/* SONIDO */
+audio { display:none; }
+
+/* TABS */
+.tabs {
+    display: flex;
+}
+
+.tabs button {
+    flex: 1;
+    padding: 15px;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.tabs button.active {
+    background: #ff4081;
+    color: white;
+}
+
+/* CONTENIDO */
+.container {
+    padding: 10px;
+}
+
+/* CARD */
+.card {
+    background: white;
+    margin: 10px 0;
+    padding: 15px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+/* ESTADO */
+.estado {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+}
+
+.prep { background: orange; color: white; }
+.listo { background: green; color: white; }
+
+/* BOTONES */
+button {
+    background: #ff4081;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    margin: 5px 5px 0 0;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+/* DETALLE */
+.detalle {
+    background: #f9f9f9;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 10px;
+}
+
+/* IMG PRODUCTO FUTURO */
+.prod-img {
+    width: 80px;
+    height: 80px;
+    border-radius: 10px;
+    object-fit: cover;
+    margin-bottom: 5px;
+}
+
+.hidden { display:none; }
+
+</style>
+</head>
+
+<body>
+
+<header>🧑‍🍳 Admin MichiRolls</header>
+
+<!-- 🔊 SONIDO -->
+<audio id="notiSound" src="https://www.soundjay.com/buttons/sounds/button-29.mp3"></audio>
+
+<!-- TABS -->
+<div class="tabs">
+    <button id="btnPrep" class="active" onclick="ver('prep')">⏳ En preparación</button>
+    <button id="btnListo" onclick="ver('listo')">✅ Listos</button>
+</div>
+
+<div class="container">
+
+<div id="prep"></div>
+<div id="listo" class="hidden"></div>
+
+</div>
+
+<script>
+
+let pedidosData = { pedidos: [], detalles: [] };
+let ultimoTotal = 0;
+
+// 🔥 cargar pedidos
+function cargar(){
+
+fetch("/pedidos")
+.then(res => res.json())
+.then(data => {
+
+    // 🔔 sonido nuevo pedido
+    if(data.pedidos.length > ultimoTotal){
+        document.getElementById("notiSound").play();
+    }
+
+    ultimoTotal = data.pedidos.length;
+    pedidosData = data;
+
+    render();
+
+});
+
+}
+
+// 🔄 render
+function render(){
+
+let prepHTML = "";
+let listoHTML = "";
+
+pedidosData.pedidos.forEach(p => {
+
+let detalles = pedidosData.detalles.filter(d => d.pedido_id === p.id);
+
+let card = `
+<div class="card">
+
+<h3>🍣 ${p.codigo}</h3>
+
+<p>👤 ${p.nombre}</p>
+<p>📞 ${p.telefono}</p>
+<p>🏠 ${p.direccion}</p>
+<p>💰 $${p.total}</p>
+
+<p>
+Estado:
+<span class="estado ${p.estado === "Listo" ? "listo" : "prep"}">
+${p.estado}
+</span>
+</p>
+
+<div class="detalle">
+<b>🧾 Pedido:</b><br><br>
+`;
+
+detalles.forEach(d=>{
+card += `
+🍣 ${d.nombre} - $${d.precio}<br>
+🧂 ${d.extras || "sin extras"}<br><br>
+`;
+});
+
+card += `
+</div>
+
+<button onclick="estado(${p.id}, 'En preparación')">En preparación</button>
+<button onclick="estado(${p.id}, 'Listo')">Listo</button>
+
+</div>
+`;
+
+if(p.estado === "Listo"){
+listoHTML += card;
+}else{
+prepHTML += card;
+}
+
+});
+
+document.getElementById("prep").innerHTML = prepHTML;
+document.getElementById("listo").innerHTML = listoHTML;
+
+}
+
+// 🔄 estado pedido
+function estado(id, estado){
+
+fetch("/estado", {
+method: "POST",
+headers: {"Content-Type":"application/json"},
+body: JSON.stringify({id, estado})
+})
+.then(()=>cargar());
+
+}
+
+
+// 🔀 tabs
+function ver(tipo){
+
+document.getElementById("prep").classList.add("hidden");
+document.getElementById("listo").classList.add("hidden");
+
+document.getElementById(tipo).classList.remove("hidden");
+
+document.getElementById("btnPrep").classList.remove("active");
+document.getElementById("btnListo").classList.remove("active");
+
+if(tipo === "prep"){
+document.getElementById("btnPrep").classList.add("active");
+}else{
+document.getElementById("btnListo").classList.add("active");
+}
+
+}
+
+// auto refresh
+setInterval(cargar, 4000);
+cargar();
+
+</script>
+
+</body>
+</html>

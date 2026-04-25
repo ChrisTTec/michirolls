@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>MichiRolls 🍣🐱</title>
+<link rel="icon" type="image/icon" href="Logo-michiRolls.ico">
+<link rel="apple-touch-icon" href="Logo-michiRolls.ico">
+
+
+
+<style>
+
+*{
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial;
+    background: #ffe4ec;
+}
+
+/* HEADER */
+.header {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:10px;
+    font-size:16px;
+    background:#111;
+    color:white;
+}
+
+.btn-cart {
+    background:#ff4081;
+    border:none;
+    padding:6px 10px;
+    border-radius:8px;
+    font-size:13px;
+    color:white;
+}
+
+/* BOTON TOP */
+.top {
+    text-align: center;
+    padding: 10px;
+}
+
+.top button {
+    width:90%;
+    max-width:400px;
+    background: #ff4081;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 14px;
+}
+
+/* PRODUCTOS */
+.producto {
+    background: white;
+    margin: 10px;
+    padding: 12px;
+    border-radius: 15px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+}
+
+.prod-box{
+    display: flex;
+    gap: 10px;
+}
+
+.prod-img{
+    width: 80px;
+    height: 80px;
+    border-radius: 12px;
+    object-fit: cover;
+}
+
+.prod-info h3{
+    margin: 0;
+    font-size: 15px;
+}
+
+.prod-info p{
+    margin: 4px 0;
+    font-weight: bold;
+}
+
+.extras{
+    font-size: 12px;
+}
+
+/* PANEL CARRITO FULL */
+.panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: white;
+    padding: 12px;
+    overflow-y: auto;
+    z-index: 9999;
+
+    transform: translateY(100%);
+    transition: 0.3s;
+}
+
+.panel.active {
+    transform: translateY(0);
+}
+
+.panel-header {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.close {
+    font-size:22px;
+    cursor:pointer;
+}
+
+/* CARRITO ITEMS */
+#carrito p {
+    background: #f5f5f5;
+    padding: 6px;
+    border-radius: 8px;
+    margin: 4px 0;
+    font-size: 13px;
+}
+
+#carrito small {
+    font-size: 11px;
+}
+
+#carrito button {
+    margin-top:5px;
+    font-size:12px;
+    padding:4px 6px;
+}
+
+/* FORM */
+input {
+    width:100%;
+    padding:8px;
+    margin:5px 0;
+    border-radius:8px;
+    border:1px solid #ccc;
+    font-size:14px;
+}
+
+label {
+    display:block;
+    margin:4px 0;
+    font-size:14px;
+}
+
+button {
+    padding:8px;
+    font-size:14px;
+    border-radius:8px;
+    border:none;
+    background:#ff4081;
+    color:white;
+}
+
+/* MOBILE */
+@media (max-width:768px){
+.prod-img{width:70px;height:70px;}
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+<header class="header">
+    <span>🐱 MichiRolls</span>
+
+    <button onclick="toggle()" class="btn-cart">
+        🛒 <span id="cant">0</span>
+    </button>
+</header>
+
+<!-- BOTON -->
+<div class="top">
+    <button onclick="seguimiento()">🔎 Seguimiento</button>
+</div>
+
+<!-- PRODUCTOS -->
+<div id="lista"></div>
+
+<!-- PANEL CARRITO -->
+<div class="panel" id="panel">
+
+<div class="panel-header">
+    <h3>🛒 Tu pedido</h3>
+    <span class="close" onclick="toggle()">✖</span>
+</div>
+
+<div id="carrito"></div>
+
+<h4>Total: $<span id="total">0</span></h4>
+
+<hr>
+
+<h3>📦 Datos cliente</h3>
+
+<input id="nombre" placeholder="Nombre">
+<input id="telefono" placeholder="WhatsApp">
+<input id="direccion" placeholder="Dirección">
+
+<h3>💳 Método de pago</h3>
+
+<label>
+<input type="radio" name="pago" value="Efectivo" checked>
+Efectivo
+</label>
+
+<label>
+<input type="radio" name="pago" value="Transferencia">
+Transferencia
+</label>
+
+<hr>
+
+<h3>🚚 Tipo de entrega</h3>
+
+<label>
+<input type="radio" name="entrega" value="Delivery" checked onchange="toggleDireccion()">
+Delivery
+</label>
+
+<label>
+<input type="radio" name="entrega" value="Retiro" onchange="toggleDireccion()">
+Retiro en local
+</label>
+
+<br>
+
+<button onclick="pagar()">Finalizar Pedido</button>
+
+</div>
+
+<script>
+
+let carrito = [];
+
+/* PRODUCTOS */
+fetch("/handrolls")
+.then(r => r.json())
+.then(data => {
+
+let html = "";
+
+data.forEach(p => {
+
+let img = p.imagen || "https://via.placeholder.com/100";
+
+html += `
+<div class="producto">
+<div class="prod-box">
+
+<img src="${img}" class="prod-img">
+
+<div class="prod-info">
+<h3>${p.nombre}</h3>
+
+<p style="font-size:12px;color:#666;">
+✔ PUEDES SELECCIONAR UN EXTRA SIN PRECIO Y UNO CON PRECIO SI LO DESEAS
+</p>
+
+<p>$${p.precio}</p>
+
+<div class="extras">
+`;
+
+(p.extras || []).forEach(e => {
+html += `
+<label>
+<input type="checkbox"
+data-nombre="${e.nombre}"
+data-precio="${e.precio}">
+${e.nombre} (+${e.precio})
+</label>
+`;
+});
+
+html += `
+</div>
+
+<button onclick="add('${p.nombre}', ${p.precio}, this)">
+Agregar
+</button>
+
+</div>
+</div>
+</div>
+`;
+
+});
+
+document.getElementById("lista").innerHTML = html;
+
+});
+
+/* DIRECCION */
+function toggleDireccion(){
+let entrega = document.querySelector('input[name="entrega"]:checked').value;
+let dir = document.getElementById("direccion");
+
+if(entrega === "Retiro"){
+dir.disabled = true;
+dir.value = "Retiro en local";
+}else{
+dir.disabled = false;
+dir.value = "";
+}
+}
+
+/* AGREGAR */
+function add(nombre, precio, btn){
+
+let box = btn.parentElement;
+let checks = box.querySelectorAll("input[type=checkbox]:checked");
+
+let extras = [];
+let extraPrice = 0;
+
+checks.forEach(c => {
+extras.push(c.dataset.nombre);
+extraPrice += Number(c.dataset.precio || 0);
+});
+
+carrito.push({
+nombre,
+precio: precio + extraPrice,
+extras
+});
+
+render();
+}
+
+/* RENDER */
+function render(){
+
+let html = "";
+let total = 0;
+
+carrito.forEach((p,i)=>{
+
+html += `
+<p>
+${p.nombre} - $${p.precio}<br>
+<small>${p.extras.join(", ")}</small>
+<button onclick="del(${i})">x</button>
+</p>
+`;
+
+total += p.precio;
+});
+
+document.getElementById("carrito").innerHTML = html;
+document.getElementById("total").innerText = total;
+document.getElementById("cant").innerText = carrito.length;
+}
+
+/* ELIMINAR */
+function del(i){
+carrito.splice(i,1);
+render();
+}
+
+/* TOGGLE */
+function toggle(){
+document.getElementById("panel").classList.toggle("active");
+}
+
+/* PAGAR */
+async function pagar(){
+
+if(carrito.length === 0){
+alert("Carrito vacío");
+return;
+}
+
+let nombre = document.getElementById("nombre").value;
+let telefono = document.getElementById("telefono").value;
+let direccion = document.getElementById("direccion").value;
+
+let pago = document.querySelector('input[name="pago"]:checked').value;
+let entrega = document.querySelector('input[name="entrega"]:checked')?.value || "No definido";
+
+let total = carrito.reduce((a,b)=>a+b.precio,0);
+
+try {
+
+const res = await fetch("/pedido", {
+method:"POST",
+headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+carrito,
+total,
+nombre,
+telefono,
+direccion,
+pago,
+})
+});
+
+const d = await res.json();
+let codigo = d.codigo;
+
+/* COPIAR */
+try {
+await navigator.clipboard.writeText(codigo);
+alert("Código copiado: " + codigo);
+} catch {
+alert("Código: " + codigo);
+}
+
+/* WHATSAPP */
+let resumen = carrito.map(p =>
+`🍣 ${p.nombre} - $${p.precio}`
+).join("\n");
+
+let msg =
+`🍣 MichiRolls Pedido\n\n` +
+`👤 ${nombre}\n` +
+`📞 ${telefono}\n` +
+`🏠 ${direccion}\n\n` +
+`💳 Pago: ${pago}\n` +
+`🚚 Entrega: ${entrega}\n\n` +
+resumen + `\n\n` +
+`💰 Total: $${total}\n` +
+`🔎 Código: ${codigo}`;
+
+window.open("https://wa.me/56929172528?text=" + encodeURIComponent(msg), "_blank");
+
+carrito = [];
+render();
+toggle();
+
+} catch (err) {
+alert("Error al procesar pedido");
+}
+
+}
+
+/* SEGUIMIENTO */
+function seguimiento(){
+window.location.href="/estado.html";
+}
+
+</script>
+
+</body>
+</html>
